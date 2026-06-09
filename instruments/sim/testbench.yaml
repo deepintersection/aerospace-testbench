@@ -1,0 +1,91 @@
+# instruments/sim/testbench.yaml
+# pyvisa-sim instrument definitions for offline development and CI.
+#
+# These simulate the SCPI command sets of common lab instruments.
+# Real instrument configurations (VISA addresses, calibration data) live in
+# instruments/lab/ which is .gitignored.
+#
+# Usage:
+#   Set INSTRUMENT_BACKEND=sim and PYVISA_SIM_FILE=instruments/sim/testbench.yaml
+#   in your .env file.
+
+spec: "1.1"
+
+devices:
+  # ── Simulated RF signal generator ──────────────────────────────────────────
+  # Based on Rohde & Schwarz SMB100A SCPI subset
+  signal_generator:
+    dialogues:
+      - q: "*IDN?"
+        r: "Rohde&Schwarz,SMB100A,SIM-001,4.00.000 (simulated)"
+      - q: "*RST"
+        r: ""
+      - q: "*CLS"
+        r: ""
+      - q: "*OPC?"
+        r: "1"
+      - q: "OUTP:STAT?"
+        r: "0"
+      - q: "FREQ?"
+        r: "1.000000000E+009"
+      - q: "POW?"
+        r: "-20.00"
+      - q: "SYST:ERR?"
+        r: "0,\"No error\""
+
+  # ── Simulated spectrum analyser ────────────────────────────────────────────
+  # Based on Rohde & Schwarz FSW subset
+  spectrum_analyser:
+    dialogues:
+      - q: "*IDN?"
+        r: "Rohde&Schwarz,FSW,SIM-002,3.30.000 (simulated)"
+      - q: "*RST"
+        r: ""
+      - q: "*OPC?"
+        r: "1"
+      - q: "FREQ:CENT?"
+        r: "1.000000000E+009"
+      - q: "FREQ:SPAN?"
+        r: "1.000000000E+008"
+      - q: "BAND?"
+        r: "1.000000000E+006"
+      - q: "SYST:ERR?"
+        r: "0,\"No error\""
+
+  # ── Simulated programmable power supply ───────────────────────────────────
+  # Based on Keysight N6700 subset
+  power_supply:
+    dialogues:
+      - q: "*IDN?"
+        r: "Keysight Technologies,N6700B,SIM-003,D.01.00 (simulated)"
+      - q: "*RST"
+        r: ""
+      - q: "*OPC?"
+        r: "1"
+      - q: "OUTP?"
+        r: "0"
+      - q: "VOLT?"
+        r: "0.000"
+      - q: "CURR?"
+        r: "0.000"
+      - q: "MEAS:VOLT?"
+        r: "0.000"
+      - q: "MEAS:CURR?"
+        r: "0.000"
+      - q: "SYST:ERR?"
+        r: "0,\"No error\""
+
+resources:
+  "GPIB::1::INSTR":
+    device: signal_generator
+  "GPIB::2::INSTR":
+    device: spectrum_analyser
+  "GPIB::5::INSTR":
+    device: power_supply
+  # TCPIP resources for instruments connected via LAN
+  "TCPIP::192.168.1.10::INSTR":
+    device: signal_generator
+  "TCPIP::192.168.1.11::INSTR":
+    device: spectrum_analyser
+  "TCPIP::192.168.1.15::INSTR":
+    device: power_supply
