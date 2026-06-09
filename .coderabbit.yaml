@@ -1,0 +1,99 @@
+# .coderabbit.yaml
+# CodeRabbit configuration for aerospace-testbench
+# Docs: https://docs.coderabbit.ai/configure/coderabbit-yaml
+
+version: "2"
+
+# ── Review behaviour ─────────────────────────────────────────────────────────
+reviews:
+  # Each PR is a single small step — review every push to the PR branch.
+  request_changes_workflow: true
+  auto_review:
+    enabled: true
+    drafts: false             # skip draft PRs
+    base_branches:
+      - main
+
+  # Abort-early rules: block merge if these issues appear anywhere in the diff.
+  # These complement ruff / mypy which run in CI.
+  path_filters:
+    - "!**/*.lock"            # don't review lockfile changes line by line
+    - "!**/migrations/**"     # Alembic auto-generated files — skip
+
+  # Focus areas for aerospace/test software
+  review_profile: "assertive"
+
+# ── Custom instructions for this domain ──────────────────────────────────────
+instructions: |
+  This is an RF & EMC test platform for aerospace hardware (satellites,
+  spacecraft subsystems). Apply the following domain-specific review rules:
+
+  DOMAIN-DRIVEN DESIGN
+  - Each bounded context lives under its own package in src/. Never import
+    from one bounded context directly into another — use shared interfaces or
+    domain events only.
+  - Domain models (entities, value objects) must be pure Python with no
+    framework imports. Flag any SQLAlchemy or FastAPI imports in domain files.
+  - Repository pattern must be used for all DB access. No raw SQL outside
+    repositories.
+
+  INSTRUMENT CONTROL (SAFETY CRITICAL)
+  - PyVISA's write() and query() methods have no timeout parameter — timeout
+    is a property on the resource object itself (resource.timeout). Flag any
+    instrument driver class or factory function that opens a VISA resource
+    (via ResourceManager.open_resource) without explicitly setting
+    resource.timeout immediately after opening. The timeout must be set before
+    any write() or query() call on that resource.
+  - GPIB / serial operations must be wrapped in try/except with instrument
+    identity logged in the error. Bare except clauses are forbidden.
+  - Simulated and real instrument code paths must be clearly separated.
+    Flag any conditional logic like `if not simulation` inside domain code —
+    it belongs in the infrastructure layer only.
+
+  TEST TRACEABILITY
+  - Every test result stored in the DB must include: device variant, test
+    phase, test case name, operator ID, timestamp, and raw measurement value.
+    Flag incomplete result records.
+  - Measurement units must always be stored alongside values. A float with no
+    unit is an error.
+
+  ASYNC CORRECTNESS
+  - FastAPI supports both `def` and `async def` route handlers. Sync `def`
+    handlers are run by FastAPI in a threadpool and are perfectly valid —
+    do NOT flag them. Only flag blocking operations that appear inside
+    `async def` route handlers, because those block the event loop.
+  - Inside `async def` handlers, flag direct use of: time.sleep(),
+    blocking file I/O (open() with read/write in non-async context),
+    serial.read() / serial.write(), pyvisa resource.write() /
+    resource.query(), requests.get/post, and any other call that does not
+    return an awaitable. These must be wrapped with asyncio.to_thread() or
+    replaced with an async equivalent.
+  - Never use `time.sleep()` in async code — use `await asyncio.sleep()`.
+
+  SECURITY
+  - No hardcoded credentials, VISA addresses, or instrument passwords.
+    All configuration via environment variables or config YAML.
+  - Sensitive fields (passwords, tokens) in Pydantic models must use
+    `SecretStr`.
+
+  PR SIZE
+  - Each PR should implement one small, focused change per the project
+    roadmap. Flag PRs that touch more than 3 bounded contexts simultaneously.
+    Suggest splitting them.
+
+  TESTING
+  - Every new public function or class must have at least one unit test.
+    Flag untested code additions.
+  - Tests that require real hardware must be marked with
+    `@pytest.mark.hardware` and must NOT run in CI.
+  - Tests that require a live database must be marked with
+    `@pytest.mark.integration`.
+
+# ── Chat behaviour ────────────────────────────────────────────────────────────
+chat:
+  auto_reply: true
+
+# ── Finish check (PR summary) ─────────────────────────────────────────────────
+finishing_touches:
+  docstrings:
+    enabled: true            # suggest missing docstrings on public APIs

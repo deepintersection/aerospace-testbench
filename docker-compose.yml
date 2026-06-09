@@ -1,0 +1,63 @@
+---
+# aerospace-testbench — docker-compose.yml
+#
+# IMPORTANT — instrument I/O architecture
+# ────────────────────────────────────────
+# GPIB adapters (NI GPIB-USB, Agilent 82357, Prologix) and serial ports
+# require OS-level drivers (linux-gpib kernel module, NI-VISA runtime, or
+# Keysight IO) that cannot reliably run inside Docker containers.
+#
+# The instrument-control layer therefore runs DIRECTLY ON THE HOST.
+# Docker is used only for stateful services (DB, dashboard) that have no
+# hardware dependency.  The FastAPI dev server also runs on the host so it
+# can import pyvisa and reach the instrument bus.
+#
+# Deployment topology:
+#   HOST machine (lab PC)
+#     ├─ uvicorn  (FastAPI + instrument layer)   :8000
+#     ├─ bokeh serve  (monitoring dashboards)    :5006
+#     └─ docker-compose up
+#           ├─ postgres                           :5432
+#           └─ (optional) pgadmin                :5050
+
+version: "3.9"
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: testbench-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: testbench
+      POSTGRES_USER: testbench
+      POSTGRES_PASSWORD: testbench_dev   # override via .env in production
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testbench -d testbench"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── pgAdmin (optional, dev convenience) ─────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: testbench-pgadmin
+    restart: unless-stopped
+    profiles: ["dev"]          # only starts with: docker compose --profile dev up
+    environment:
+      # Set these in your .env file — do not use these defaults in a shared environment
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-pgadmin@testbench.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?PGADMIN_PASSWORD must be set in .env}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+    driver: local
