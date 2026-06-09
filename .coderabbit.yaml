@@ -38,8 +38,12 @@ instructions: |
     repositories.
 
   INSTRUMENT CONTROL (SAFETY CRITICAL)
-  - Any code that sends commands to physical instruments (PyVISA write/query)
-    must have a timeout parameter. Flag calls without explicit timeout.
+  - PyVISA's write() and query() methods have no timeout parameter — timeout
+    is a property on the resource object itself (resource.timeout). Flag any
+    instrument driver class or factory function that opens a VISA resource
+    (via ResourceManager.open_resource) without explicitly setting
+    resource.timeout immediately after opening. The timeout must be set before
+    any write() or query() call on that resource.
   - GPIB / serial operations must be wrapped in try/except with instrument
     identity logged in the error. Bare except clauses are forbidden.
   - Simulated and real instrument code paths must be clearly separated.
@@ -54,9 +58,16 @@ instructions: |
     unit is an error.
 
   ASYNC CORRECTNESS
-  - FastAPI route handlers must be `async def`. Blocking calls (serial I/O,
-    file reads) inside async handlers must be wrapped with
-    `asyncio.to_thread()`.
+  - FastAPI supports both `def` and `async def` route handlers. Sync `def`
+    handlers are run by FastAPI in a threadpool and are perfectly valid —
+    do NOT flag them. Only flag blocking operations that appear inside
+    `async def` route handlers, because those block the event loop.
+  - Inside `async def` handlers, flag direct use of: time.sleep(),
+    blocking file I/O (open() with read/write in non-async context),
+    serial.read() / serial.write(), pyvisa resource.write() /
+    resource.query(), requests.get/post, and any other call that does not
+    return an awaitable. These must be wrapped with asyncio.to_thread() or
+    replaced with an async equivalent.
   - Never use `time.sleep()` in async code — use `await asyncio.sleep()`.
 
   SECURITY
