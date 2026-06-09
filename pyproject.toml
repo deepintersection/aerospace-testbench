@@ -62,8 +62,9 @@ dev = [
     "types-pyserial>=3.5",
 ]
 
-[project.scripts]
-testbench = "aerospace_testbench.api.main:run"
+# CLI entrypoint — added in PR 4 when aerospace_testbench.api.main exists
+# [project.scripts]
+# testbench = "aerospace_testbench.api.main:run"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aerospace_testbench"]

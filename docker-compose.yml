@@ -49,10 +49,11 @@ services:
     restart: unless-stopped
     profiles: ["dev"]          # only starts with: docker compose --profile dev up
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@testbench.local
-      PGADMIN_DEFAULT_PASSWORD: admin
+      # Set these in your .env file — do not use these defaults in a shared environment
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-pgadmin@testbench.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?PGADMIN_PASSWORD must be set in .env}
     ports:
-      - "5050:80"
+      - "${PGADMIN_PORT:-5050}:80"
     depends_on:
       postgres:
         condition: service_healthy

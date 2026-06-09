@@ -55,7 +55,7 @@ pull request — even one-line fixes.
 
 ### Branch naming
 
-```
+```text
 feat/<short-description>      # new feature / domain object
 fix/<short-description>       # bug fix
 chore/<short-description>     # tooling, deps, config
@@ -83,7 +83,7 @@ encouraged to discuss.
 
 ## Architecture rules (DDD)
 
-```
+```text
 src/aerospace_testbench/
 ├── project_registry/     # Bounded context — no imports from other BCs
 ├── dut/                  # Bounded context
